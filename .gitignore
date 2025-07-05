@@ -79,3 +79,4 @@ dmypy.json
 # Tailwind / Node.js (if you're using Tailwind in your project)
 node_modules/
 *.lock
+.vercel

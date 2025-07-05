@@ -12,33 +12,19 @@ const connectDB = require('./config/db');
 dotenv.config();
 const app = express();
 
-// Connect to MongoDB (called once in serverless)
-let isConnected = false;
-const connectMongoDB = async () => {
-  if (isConnected) return;
-  await connectDB();
-  isConnected = true;
-};
+// Connect to MongoDB
+connectDB();
 
-// Middleware to ensure DB connection
-app.use(async (req, res, next) => {
-  await connectMongoDB();
-  next();
-});
-
-// CORS for frontend
+// Middleware
 app.use(cors({
   origin: ['http://localhost:3000', 'https://affiliatenest-dggekkgul-jonathans-projects-3fae278e.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
-// Helmet with adjusted CORP
 app.use(helmet({
   crossOriginResourcePolicy: false
 }));
-
 app.use(express.json());
 
 // Health check
@@ -46,7 +32,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'API is running' });
 });
 
-// Widget endpoint with caching
+// Widget endpoint
 app.get('/api/widget.js', async (req, res) => {
   const cacheKey = `widget_${req.query.link}`;
   const cachedScript = cache.get(cacheKey);
@@ -97,7 +83,7 @@ app.get('/api/widget.js', async (req, res) => {
         }
       })();
     `;
-    cache.put(cacheKey, script, 60 * 1000); // Cache for 1 minute
+    cache.put(cacheKey, script, 60 * 1000);
     res.set('Content-Type', 'application/javascript');
     res.send(script);
   } catch (error) {
@@ -110,5 +96,10 @@ app.get('/api/widget.js', async (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/affiliate', require('./routes/affiliate'));
 
-// Export for Vercel
+// Start server locally
+const PORT = process.env.PORT || 5004;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 module.exports = app;
