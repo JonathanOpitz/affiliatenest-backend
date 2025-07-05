@@ -76,8 +76,8 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     res.status(201).json({ message: 'Account created. Please verify your email.' });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Registration error:', error.message, error.stack);
+    res.status(500).json({ error: `Server error: ${error.message}` });
   }
 });
 
@@ -93,7 +93,34 @@ router.get('/verify/:token', async (req, res) => {
     await user.save();
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Verification error:', error.message, error.stack);
+    res.status(500).json({ error: `Server error: ${error.message}` });
+  }
+});
+
+// Login endpoint
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+    if (!user.verified) {
+      return res.status(400).json({ error: 'Please verify your email' });
+    }
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.json({ token });
+  } catch (error) {
+    console.error('Login error:', error.message, error.stack);
+    res.status(500).json({ error: `Server error: ${error.message}` });
   }
 });
 
