@@ -30,9 +30,15 @@ app.use(helmet({
 }));
 app.use(express.json());
 
+// Add version header
+app.use((req, res, next) => {
+  res.setHeader('X-App-Version', '1.0.1'); // Update this for each deployment
+  next();
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'API is running' });
+  res.json({ status: 'API is running', version: '1.0.1' });
 });
 
 // Widget endpoint
