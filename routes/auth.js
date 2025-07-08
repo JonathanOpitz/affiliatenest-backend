@@ -45,10 +45,13 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Email or username already registered' });
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     const user = new User({
       username,
       email,
-      password,
+      password: hashedPassword,
       verificationToken: crypto.randomBytes(32).toString('hex'),
     });
     await user.save();
@@ -68,7 +71,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
     await transporter.sendMail({
-      from: '"AffiliateNest" <your-email@gmail.com>',
+      from: '"AffiliateNest" <' + process.env.EMAIL_USER + '>',
       to: email,
       subject: 'Verify Your AffiliateNest Account',
       html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
@@ -112,7 +115,7 @@ router.post('/login', async (req, res) => {
     if (!user.verified) {
       return res.status(400).json({ error: 'Please verify your email' });
     }
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
