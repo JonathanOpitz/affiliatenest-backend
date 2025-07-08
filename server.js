@@ -12,6 +12,9 @@ const connectDB = require('./config/db');
 dotenv.config();
 const app = express();
 
+// Enable trust proxy for Vercel
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 

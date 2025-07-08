@@ -15,6 +15,8 @@ const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: 'Too many registration attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Email transporter
@@ -26,10 +28,27 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Test email configuration
+router.get('/test-email', async (req, res) => {
+  try {
+    await transporter.verify();
+    res.json({ message: 'Email configuration is valid' });
+  } catch (error) {
+    console.error('Email config error:', error.message, error.stack);
+    res.status(500).json({ error: `Email config error: ${error.message}` });
+  }
+});
+
 // Register endpoint
 router.post('/register', registerLimiter, async (req, res) => {
   const { username, email, password, referralLink } = req.body;
   try {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not defined');
+    }
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      throw new Error('Email configuration is missing');
+    }
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' });
     }
@@ -71,7 +90,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
     await transporter.sendMail({
-      from: '"AffiliateNest" <' + process.env.EMAIL_USER + '>',
+      from: `"AffiliateNest" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Verify Your AffiliateNest Account',
       html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
