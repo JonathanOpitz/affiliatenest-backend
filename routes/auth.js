@@ -21,10 +21,11 @@ const registerLimiter = rateLimit({
 
 // Email transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.sendgrid.net',
+  port: 587,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: 'apikey',
+    pass: process.env.SENDGRID_API_KEY,
   },
 });
 
@@ -46,8 +47,8 @@ router.post('/register', registerLimiter, async (req, res) => {
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is not defined');
     }
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('Email configuration is missing');
+    if (!process.env.SENDGRID_API_KEY) {
+      throw new Error('SENDGRID_API_KEY is missing');
     }
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -88,13 +89,18 @@ router.post('/register', registerLimiter, async (req, res) => {
       }
     }
 
-    const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
-    await transporter.sendMail({
-      from: `"AffiliateNest" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Verify Your AffiliateNest Account',
-      html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
-    });
+    try {
+      const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
+      await transporter.sendMail({
+        from: `"AffiliateNest" <jonercoolus@gmail.com>`, // Must match verified SendGrid sender
+        to: email,
+        subject: 'Verify Your AffiliateNest Account',
+        html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
+      });
+    } catch (emailError) {
+      console.error('Email sending error:', emailError.message, emailError.stack);
+      return res.status(500).json({ error: `Failed to send verification email: ${emailError.message}` });
+    }
 
     res.status(201).json({ message: 'Account created. Please verify your email.' });
   } catch (error) {
