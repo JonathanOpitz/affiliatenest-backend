@@ -10,7 +10,6 @@ const AffiliateLink = require('../models/AffiliateLink');
 const Referral = require('../models/Referral');
 const router = express.Router();
 
-// Rate limiter
 const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -19,7 +18,6 @@ const registerLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Email transporter
 const transporter = nodemailer.createTransport({
   host: 'smtp.sendgrid.net',
   port: 587,
@@ -29,7 +27,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Test email configuration
 router.get('/test-email', async (req, res) => {
   try {
     await transporter.verify();
@@ -40,15 +37,19 @@ router.get('/test-email', async (req, res) => {
   }
 });
 
-// Register endpoint
 router.post('/register', registerLimiter, async (req, res) => {
-  const { username, email, password, referralLink } = req.body;
+  console.log('Register endpoint hit:', req.body);
   try {
+    const { username, email, password, referralLink } = req.body;
+    console.log('Checking environment variables');
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is not defined');
     }
     if (!process.env.SENDGRID_API_KEY) {
       throw new Error('SENDGRID_API_KEY is missing');
+    }
+    if (!process.env.BASE_URL) {
+      throw new Error('BASE_URL is missing');
     }
     if (!username || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -60,8 +61,10 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
+    console.log('Checking for existing user:', { email, username });
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
+      console.log('Found existing user:', { email: existingUser.email, username: existingUser.username });
       return res.status(400).json({ error: 'Email or username already registered' });
     }
 
@@ -74,11 +77,15 @@ router.post('/register', registerLimiter, async (req, res) => {
       password: hashedPassword,
       verificationToken: crypto.randomBytes(32).toString('hex'),
     });
+    console.log('Saving new user:', { username, email });
     await user.save();
+    console.log('User saved:', { _id: user._id, email, username });
 
     if (referralLink) {
+      console.log('Checking referral link:', referralLink);
       const affiliateLink = await AffiliateLink.findOne({ link: referralLink });
       if (affiliateLink) {
+        console.log('Found affiliate link:', affiliateLink._id);
         const referral = new Referral({
           affiliateLinkId: affiliateLink._id,
           userId: affiliateLink.userId,
@@ -86,21 +93,19 @@ router.post('/register', registerLimiter, async (req, res) => {
           referredUserId: user._id,
         });
         await referral.save();
+        console.log('Referral saved:', referral._id);
       }
     }
 
-    try {
-      const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
-      await transporter.sendMail({
-        from: `"AffiliateNest" <jonercoolus@gmail.com>`, // Must match verified SendGrid sender
-        to: email,
-        subject: 'Verify Your AffiliateNest Account',
-        html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
-      });
-    } catch (emailError) {
-      console.error('Email sending error:', emailError.message, emailError.stack);
-      return res.status(500).json({ error: `Failed to send verification email: ${emailError.message}` });
-    }
+    const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
+    console.log('Sending verification email to:', email);
+    await transporter.sendMail({
+      from: `"AffiliateNest" <jonercoolus@gmail.com>`,
+      to: email,
+      subject: 'Verify Your AffiliateNest Account',
+      html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
+    });
+    console.log('Verification email sent to:', email);
 
     res.status(201).json({ message: 'Account created. Please verify your email.' });
   } catch (error) {
@@ -109,16 +114,18 @@ router.post('/register', registerLimiter, async (req, res) => {
   }
 });
 
-// Verify email
 router.get('/verify/:token', async (req, res) => {
+  console.log('Verify endpoint hit:', req.params.token);
   try {
     const user = await User.findOne({ verificationToken: req.params.token });
     if (!user) {
+      console.log('Invalid or expired token:', req.params.token);
       return res.status(400).json({ error: 'Invalid or expired token' });
     }
     user.verified = true;
     user.verificationToken = undefined;
     await user.save();
+    console.log('User verified:', { email: user.email, username: user.username });
     res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   } catch (error) {
     console.error('Verification error:', error.message, error.stack);
@@ -126,25 +133,29 @@ router.get('/verify/:token', async (req, res) => {
   }
 });
 
-// Login endpoint
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  console.log('Login endpoint hit:', req.body.email);
   try {
+    const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
     const user = await User.findOne({ email });
     if (!user) {
+      console.log('User not found:', email);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
     if (!user.verified) {
+      console.log('User not verified:', email);
       return res.status(400).json({ error: 'Please verify your email' });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log('Password mismatch:', email);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    console.log('Login successful:', { email, userId: user._id });
     res.json({ token });
   } catch (error) {
     console.error('Login error:', error.message, error.stack);
