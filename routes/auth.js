@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const AffiliateLink = require('../models/AffiliateLink');
 const Referral = require('../models/Referral');
@@ -41,6 +42,8 @@ router.post('/register', registerLimiter, async (req, res) => {
   console.log('Register endpoint hit:', req.body);
   try {
     const { username, email, password, referralLink } = req.body;
+    const normalizedEmail = email.toLowerCase();
+    const normalizedUsername = username.toLowerCase();
     console.log('Checking environment variables');
     if (!process.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is not defined');
@@ -61,9 +64,11 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    console.log('Checking for existing user:', { email, username });
-    const existingEmailUser = await User.findOne({ email });
-    const existingUsernameUser = await User.findOne({ username });
+    console.log('Database:', mongoose.connection.db.databaseName);
+    console.log('Collection: users');
+    console.log('Checking for existing user:', { email: normalizedEmail, username: normalizedUsername });
+    const existingEmailUser = await User.findOne({ email: normalizedEmail });
+    const existingUsernameUser = await User.findOne({ username: normalizedUsername });
     if (existingEmailUser || existingUsernameUser) {
       console.log('Found existing user:', {
         email: existingEmailUser ? existingEmailUser.email : 'none',
@@ -76,14 +81,14 @@ router.post('/register', registerLimiter, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = new User({
-      username,
-      email,
+      username: normalizedUsername,
+      email: normalizedEmail,
       password: hashedPassword,
       verificationToken: crypto.randomBytes(32).toString('hex'),
     });
-    console.log('Saving new user:', { username, email });
+    console.log('Saving new user:', { username: normalizedUsername, email: normalizedEmail });
     await user.save();
-    console.log('User saved:', { _id: user._id, email, username });
+    console.log('User saved:', { _id: user._id, email: normalizedEmail, username: normalizedUsername });
 
     if (referralLink) {
       console.log('Checking referral link:', referralLink);
@@ -102,14 +107,14 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 
     const verificationUrl = `${process.env.BASE_URL}/api/auth/verify/${user.verificationToken}`;
-    console.log('Sending verification email to:', email);
+    console.log('Sending verification email to:', normalizedEmail);
     await transporter.sendMail({
       from: `"AffiliateNest" <jonercoolus@gmail.com>`,
-      to: email,
+      to: normalizedEmail,
       subject: 'Verify Your AffiliateNest Account',
       html: `<p>Thank you for signing up! Please verify your email by clicking <a href="${verificationUrl}">here</a>.</p>`,
     });
-    console.log('Verification email sent to:', email);
+    console.log('Verification email sent to:', normalizedEmail);
 
     res.status(201).json({ message: 'Account created. Please verify your email.' });
   } catch (error) {
@@ -141,25 +146,26 @@ router.post('/login', async (req, res) => {
   console.log('Login endpoint hit:', req.body.email);
   try {
     const { email, password } = req.body;
+    const normalizedEmail = email.toLowerCase();
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      console.log('User not found:', email);
+      console.log('User not found:', normalizedEmail);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
     if (!user.verified) {
-      console.log('User not verified:', email);
+      console.log('User not verified:', normalizedEmail);
       return res.status(400).json({ error: 'Please verify your email' });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log('Password mismatch:', email);
+      console.log('Password mismatch:', normalizedEmail);
       return res.status(400).json({ error: 'Invalid credentials' });
     }
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    console.log('Login successful:', { email, userId: user._id });
+    console.log('Login successful:', { email: normalizedEmail, userId: user._id });
     res.json({ token });
   } catch (error) {
     console.error('Login error:', error.message, error.stack);
