@@ -38,34 +38,34 @@ router.get('/test-email', async (req, res) => {
   }
 });
 
+router.get('/test-db', async (req, res) => {
+  try {
+    console.log('Test DB endpoint hit');
+    console.log('Database:', mongoose.connection.db.databaseName);
+    console.log('Collection: users');
+    const users = await User.find();
+    console.log('All users:', users.map(u => ({ email: u.email, username: u.username })));
+    res.json({ database: mongoose.connection.db.databaseName, users });
+  } catch (error) {
+    console.error('Test DB error:', error.message, error.stack);
+    res.status(500).json({ error: `Test DB error: ${error.message}` });
+  }
+});
+
 router.post('/register', registerLimiter, async (req, res) => {
   console.log('Register endpoint hit:', req.body);
   try {
     const { username, email, password, referralLink } = req.body;
     const normalizedEmail = email.toLowerCase();
     const normalizedUsername = username.toLowerCase();
-    console.log('Checking environment variables');
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET is not defined');
-    }
-    if (!process.env.SENDGRID_API_KEY) {
-      throw new Error('SENDGRID_API_KEY is missing');
-    }
-    if (!process.env.BASE_URL) {
-      throw new Error('BASE_URL is missing');
-    }
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-
     console.log('Database:', mongoose.connection.db.databaseName);
     console.log('Collection: users');
+    console.log('Environment:', {
+      MONGODB_URI: process.env.MONGODB_URI,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY,
+      BASE_URL: process.env.BASE_URL,
+    });
     console.log('Checking for existing user:', { email: normalizedEmail, username: normalizedUsername });
     const existingEmailUser = await User.findOne({ email: normalizedEmail });
     const existingUsernameUser = await User.findOne({ username: normalizedUsername });
@@ -170,20 +170,6 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error.message, error.stack);
     res.status(500).json({ error: `Server error: ${error.message}` });
-  }
-});
-
-router.get('/test-db', async (req, res) => {
-  try {
-    console.log('Test DB endpoint hit');
-    console.log('Database:', mongoose.connection.db.databaseName);
-    console.log('Collection: users');
-    const users = await User.find();
-    console.log('All users:', users.map(u => ({ email: u.email, username: u.username })));
-    res.json({ database: mongoose.connection.db.databaseName, users });
-  } catch (error) {
-    console.error('Test DB error:', error.message, error.stack);
-    res.status(500).json({ error: `Test DB error: ${error.message}` });
   }
 });
 
