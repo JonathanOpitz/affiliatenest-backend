@@ -4,14 +4,15 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     console.log('Connecting to MongoDB:', process.env.MONGODB_URI.replace(/:.*@/, ':****@'));
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+    await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
     });
-    console.log('MongoDB connected to', conn.connection.db.namespace);
-    return conn;
+    console.log('MongoDB connected to', mongoose.connection.db.namespace);
+    return mongoose.connection;
   } catch (error) {
     console.error('MongoDB connection error:', error.message, error.stack);
-    process.exit(1);
+    throw error; // Let caller handle the error
   }
 };
 
