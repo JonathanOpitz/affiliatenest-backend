@@ -62,9 +62,13 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 
     console.log('Checking for existing user:', { email, username });
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
-      console.log('Found existing user:', { email: existingUser.email, username: existingUser.username });
+    const existingEmailUser = await User.findOne({ email });
+    const existingUsernameUser = await User.findOne({ username });
+    if (existingEmailUser || existingUsernameUser) {
+      console.log('Found existing user:', {
+        email: existingEmailUser ? existingEmailUser.email : 'none',
+        username: existingUsernameUser ? existingUsernameUser.username : 'none',
+      });
       return res.status(400).json({ error: 'Email or username already registered' });
     }
 
