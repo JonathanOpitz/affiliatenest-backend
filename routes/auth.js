@@ -41,11 +41,11 @@ router.get('/test-email', async (req, res) => {
 router.get('/test-db', async (req, res) => {
   try {
     console.log('Test DB endpoint hit');
-    console.log('Database:', mongoose.connection.db.databaseName);
-    console.log('Collection: users');
+    console.log('MongoDB connected:', mongoose.connection.readyState);
+    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected');
     const users = await User.find();
     console.log('All users:', users.map(u => ({ email: u.email, username: u.username })));
-    res.json({ database: mongoose.connection.db.databaseName, users });
+    res.json({ database: mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected', users });
   } catch (error) {
     console.error('Test DB error:', error.message, error.stack);
     res.status(500).json({ error: `Test DB error: ${error.message}` });
@@ -55,11 +55,11 @@ router.get('/test-db', async (req, res) => {
 router.post('/register', registerLimiter, async (req, res) => {
   console.log('Register endpoint hit:', req.body);
   try {
+    console.log('MongoDB connected:', mongoose.connection.readyState);
+    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected');
     const { username, email, password, referralLink } = req.body;
     const normalizedEmail = email.toLowerCase();
     const normalizedUsername = username.toLowerCase();
-    console.log('Database:', mongoose.connection.db.databaseName);
-    console.log('Collection: users');
     console.log('Environment:', {
       MONGODB_URI: process.env.MONGODB_URI,
       JWT_SECRET: !!process.env.JWT_SECRET,
@@ -67,6 +67,8 @@ router.post('/register', registerLimiter, async (req, res) => {
       BASE_URL: process.env.BASE_URL,
     });
     console.log('Checking for existing user:', { email: normalizedEmail, username: normalizedUsername });
+    const allUsers = await User.find();
+    console.log('All users:', allUsers.map(u => ({ email: u.email, username: u.username })));
     const existingEmailUser = await User.findOne({ email: normalizedEmail });
     const existingUsernameUser = await User.findOne({ username: normalizedUsername });
     if (existingEmailUser || existingUsernameUser) {

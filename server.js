@@ -21,6 +21,20 @@ console.log('Environment:', {
   BASE_URL: process.env.BASE_URL,
 });
 
+// Middleware to ensure MongoDB is connected
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    console.log('MongoDB not connected, attempting to connect...');
+    try {
+      await connectDB();
+    } catch (error) {
+      console.error('MongoDB connection failed in middleware:', error.message, error.stack);
+      return res.status(500).json({ error: 'Database connection failed' });
+    }
+  }
+  next();
+});
+
 // Connect to MongoDB
 console.log('Attempting MongoDB connection...');
 connectDB().then(() => {
@@ -45,7 +59,7 @@ app.use(express.json());
 
 // Add version header
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.2');
+  res.setHeader('X-App-Version', '1.0.3'); // Updated version
   next();
 });
 
@@ -65,7 +79,7 @@ app.get('/api/test', async (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   console.log('Health endpoint hit');
-  res.json({ status: 'API is running', version: '1.0.2' });
+  res.json({ status: 'API is running', version: '1.0.3' });
 });
 
 // Widget endpoint
