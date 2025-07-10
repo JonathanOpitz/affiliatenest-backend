@@ -45,7 +45,7 @@ app.use(express.json());
 
 // Add version header
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.2'); // Updated version
+  res.setHeader('X-App-Version', '1.0.2');
   next();
 });
 
