@@ -12,13 +12,26 @@ const connectDB = require('./config/db');
 dotenv.config();
 const app = express();
 
-// Enable trust proxy for Vercel
-app.set('trust proxy', 1);
+console.log('Server starting...');
+console.log('Environment:', {
+  MONGODB_URI: process.env.MONGODB_URI,
+  NODE_ENV: process.env.NODE_ENV,
+  JWT_SECRET: !!process.env.JWT_SECRET,
+  SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY,
+  BASE_URL: process.env.BASE_URL,
+});
 
 // Connect to MongoDB
-connectDB();
+console.log('Attempting MongoDB connection...');
+connectDB().then(() => {
+  console.log('MongoDB connection successful');
+}).catch(error => {
+  console.error('MongoDB connection failed:', error.message, error.stack);
+  process.exit(1);
+});
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(cors({
   origin: ['http://localhost:3000', 'https://affiliatenest-dggekkgul-jonathans-projects-3fae278e.vercel.app'],
   credentials: true,
@@ -32,13 +45,27 @@ app.use(express.json());
 
 // Add version header
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.1'); // Update this for each deployment
+  res.setHeader('X-App-Version', '1.0.2'); // Updated version
   next();
+});
+
+// Test endpoint
+app.get('/api/test', async (req, res) => {
+  try {
+    console.log('Test endpoint hit');
+    console.log('MongoDB connected:', mongoose.connection.readyState);
+    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected');
+    res.json({ status: 'ok', mongodb: mongoose.connection.readyState, database: mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected' });
+  } catch (error) {
+    console.error('Test endpoint error:', error.message, error.stack);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'API is running', version: '1.0.1' });
+  console.log('Health endpoint hit');
+  res.json({ status: 'API is running', version: '1.0.2' });
 });
 
 // Widget endpoint
