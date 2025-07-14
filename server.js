@@ -11,6 +11,7 @@ const { connectDB, cachedClient } = require('./config/db');
 
 dotenv.config();
 const app = express();
+const port = process.env.PORT || 5004;
 
 console.log('Server starting...');
 console.log('Environment:', {
@@ -19,6 +20,7 @@ console.log('Environment:', {
   JWT_SECRET: !!process.env.JWT_SECRET,
   SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY,
   BASE_URL: process.env.BASE_URL,
+  PORT: port,
 });
 
 let connected = false;
@@ -56,7 +58,7 @@ app.use(helmet({
 app.use(express.json());
 
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.11');
+  res.setHeader('X-App-Version', '1.0.12');
   next();
 });
 
@@ -64,7 +66,7 @@ app.get('/', (req, res) => {
   console.log('Root endpoint hit');
   res.json({
     status: 'Server is running',
-    version: '1.0.11',
+    version: '1.0.12',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
@@ -73,7 +75,7 @@ app.get('/api/health', (req, res) => {
   console.log('Health endpoint hit');
   res.json({
     status: 'API is running',
-    version: '1.0.11',
+    version: '1.0.12',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
@@ -163,5 +165,12 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/affiliate', require('./routes/affiliate'));
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
+
+// Start server locally
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+  });
+}
 
 module.exports = app;

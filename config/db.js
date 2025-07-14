@@ -19,12 +19,16 @@ const connectDB = async () => {
 
   try {
     console.log('Attempting MongoDB connection with URI:', MONGODB_URI.replace(/:.*@/, ':****@'));
-    // Log DNS resolution
-    const parsedUrl = new URL(MONGODB_URI);
-    const hostname = parsedUrl.hostname;
-    console.log('Resolving DNS for:', hostname);
-    const dnsResult = await dns.resolve(hostname);
-    console.log('DNS resolved:', dnsResult);
+    if (MONGODB_URI.startsWith('mongodb+srv://')) {
+      const parsedUrl = new URL(MONGODB_URI);
+      const hostname = parsedUrl.hostname;
+      console.log('Resolving DNS for:', hostname);
+      const dnsResult = await dns.resolve(hostname).catch(err => {
+        console.error('DNS resolution failed:', err.message);
+        return null;
+      });
+      console.log('DNS resolved:', dnsResult || 'skipped');
+    }
 
     const client = new MongoClient(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
