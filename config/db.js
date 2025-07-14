@@ -1,6 +1,7 @@
 // config/db.js
 const mongoose = require('mongoose');
 const { MongoClient } = require('mongodb');
+const dns = require('dns').promises;
 
 const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
@@ -18,9 +19,19 @@ const connectDB = async () => {
 
   try {
     console.log('Attempting MongoDB connection with URI:', MONGODB_URI.replace(/:.*@/, ':****@'));
+    // Log DNS resolution
+    const parsedUrl = new URL(MONGODB_URI);
+    const hostname = parsedUrl.hostname;
+    console.log('Resolving DNS for:', hostname);
+    const dnsResult = await dns.resolve(hostname);
+    console.log('DNS resolved:', dnsResult);
+
     const client = new MongoClient(MONGODB_URI, {
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      retryWrites: true,
+      w: 'majority',
     });
     await client.connect();
     console.log('MongoDB client connected');
@@ -28,8 +39,9 @@ const connectDB = async () => {
     cachedClient = client;
 
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
     });
     console.log('Mongoose connected');
     return client;
