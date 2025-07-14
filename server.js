@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -25,7 +24,7 @@ console.log('Environment:', {
 
 let connected = false;
 
-const initDB = async (retries = 3, delay = 3000) => {
+const initDB = async (retries = 5, delay = 5000) => {
   for (let i = 0; i < retries; i++) {
     try {
       await connectDB();
@@ -58,7 +57,7 @@ app.use(helmet({
 app.use(express.json());
 
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.12');
+  res.setHeader('X-App-Version', '1.0.14');
   next();
 });
 
@@ -66,7 +65,7 @@ app.get('/', (req, res) => {
   console.log('Root endpoint hit');
   res.json({
     status: 'Server is running',
-    version: '1.0.12',
+    version: '1.0.14',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
@@ -75,7 +74,7 @@ app.get('/api/health', (req, res) => {
   console.log('Health endpoint hit');
   res.json({
     status: 'API is running',
-    version: '1.0.12',
+    version: '1.0.14',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
@@ -166,7 +165,6 @@ app.use('/api/affiliate', require('./routes/affiliate'));
 
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// Start server locally
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
