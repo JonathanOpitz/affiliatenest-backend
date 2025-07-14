@@ -3,13 +3,14 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    console.log('Connecting to MongoDB:', process.env.MONGODB_URI.replace(/:.*@/, ':****@'));
+    console.log('Connecting to MongoDB:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:.*@/, ':****@') : 'undefined');
     await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000, // Increased timeout
+      connectTimeoutMS: 15000,
       maxPoolSize: 10,
       retryWrites: true,
       w: 'majority',
+      serverApi: { version: '1', strict: true, deprecationErrors: true },
     });
     console.log('MongoDB connected to', mongoose.connection.db.namespace);
     return mongoose.connection;

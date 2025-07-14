@@ -14,7 +14,7 @@ const app = express();
 
 console.log('Server starting...');
 console.log('Environment:', {
-  MONGODB_URI: process.env.MONGODB_URI,
+  MONGODB_URI: process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:.*@/, ':****@') : 'undefined',
   NODE_ENV: process.env.NODE_ENV,
   JWT_SECRET: !!process.env.JWT_SECRET,
   SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY,
@@ -26,10 +26,10 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
   for (let i = 0; i < retries; i++) {
     try {
       await connectDB();
-      console.log('MongoDB connection successful, starting server...');
+      console.log('MongoDB connection successful');
       return;
     } catch (error) {
-      console.error(`MongoDB connection attempt ${i + 1} failed:`, error.message);
+      console.error(`MongoDB connection attempt ${i + 1} failed:`, error.message, error.stack);
       if (i < retries - 1) {
         console.log(`Retrying in ${delay / 1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -37,12 +37,12 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     }
   }
   console.error('MongoDB connection failed after retries');
-  process.exit(1);
+  return false; // Don't exit, allow server to start
 };
 
-// Start server only after MongoDB connection
+// Start server
 const startServer = async () => {
-  await connectWithRetry();
+  const connected = await connectWithRetry();
 
   // Middleware
   app.set('trust proxy', 1);
@@ -59,31 +59,45 @@ const startServer = async () => {
 
   // Add version header
   app.use((req, res, next) => {
-    res.setHeader('X-App-Version', '1.0.4'); // Updated version
+    res.setHeader('X-App-Version', '1.0.5'); // Updated version
     next();
+  });
+
+  // Health check (no MongoDB dependency)
+  app.get('/api/health', (req, res) => {
+    console.log('Health endpoint hit');
+    res.json({
+      status: 'API is running',
+      version: '1.0.5',
+      mongodb: connected ? mongoose.connection.readyState : 'failed',
+    });
   });
 
   // Test endpoint
   app.get('/api/test', async (req, res) => {
+    if (!connected || mongoose.connection.readyState !== 1) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
     try {
       console.log('Test endpoint hit');
       console.log('MongoDB connected:', mongoose.connection.readyState);
       console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected');
-      res.json({ status: 'ok', mongodb: mongoose.connection.readyState, database: mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected' });
+      res.json({
+        status: 'ok',
+        mongodb: mongoose.connection.readyState,
+        database: mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected'
+      });
     } catch (error) {
       console.error('Test endpoint error:', error.message, error.stack);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Health check
-  app.get('/api/health', (req, res) => {
-    console.log('Health endpoint hit');
-    res.json({ status: 'API is running', version: '1.0.4', mongodb: mongoose.connection.readyState });
-  });
-
   // Widget endpoint
   app.get('/api/widget.js', async (req, res) => {
+    if (!connected || mongoose.connection.readyState !== 1) {
+      return res.status(500).send(`console.error("Database not connected");`);
+    }
     const cacheKey = `widget_${req.query.link}`;
     const cachedScript = cache.get(cacheKey);
     if (cachedScript) {

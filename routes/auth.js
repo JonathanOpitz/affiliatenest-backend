@@ -39,6 +39,9 @@ router.get('/test-email', async (req, res) => {
 });
 
 router.get('/test-db', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(500).json({ error: 'Database not connected' });
+  }
   try {
     console.log('Test DB endpoint hit');
     console.log('MongoDB connected:', mongoose.connection.readyState);
@@ -53,6 +56,9 @@ router.get('/test-db', async (req, res) => {
 });
 
 router.post('/register', registerLimiter, async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(500).json({ error: 'Database not connected' });
+  }
   console.log('Register endpoint hit:', req.body);
   try {
     console.log('MongoDB connected:', mongoose.connection.readyState);
@@ -61,7 +67,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     const normalizedEmail = email.toLowerCase();
     const normalizedUsername = username.toLowerCase();
     console.log('Environment:', {
-      MONGODB_URI: process.env.MONGODB_URI,
+      MONGODB_URI: process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:.*@/, ':****@') : 'undefined',
       JWT_SECRET: !!process.env.JWT_SECRET,
       SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY,
       BASE_URL: process.env.BASE_URL,
@@ -126,6 +132,9 @@ router.post('/register', registerLimiter, async (req, res) => {
 });
 
 router.get('/verify/:token', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(500).json({ error: 'Database not connected' });
+  }
   console.log('Verify endpoint hit:', req.params.token);
   try {
     const user = await User.findOne({ verificationToken: req.params.token });
@@ -145,6 +154,9 @@ router.get('/verify/:token', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(500).json({ error: 'Database not connected' });
+  }
   console.log('Login endpoint hit:', req.body.email);
   try {
     const { email, password } = req.body;
