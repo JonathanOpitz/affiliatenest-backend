@@ -6,23 +6,29 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
 
 const connectDB = async () => {
-  if (cachedClient && cachedClient.topology.isConnected()) {
+  if (!MONGODB_URI) {
+    console.error('MONGODB_URI is undefined');
+    throw new Error('MONGODB_URI is not set');
+  }
+
+  if (cachedClient && cachedClient.topology && cachedClient.topology.isConnected()) {
     console.log('Using cached MongoDB client');
     return cachedClient;
   }
 
   try {
+    console.log('Attempting MongoDB connection with URI:', MONGODB_URI.replace(/:.*@/, ':****@'));
     const client = new MongoClient(MONGODB_URI, {
-      serverSelectionTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 2000,
       socketTimeoutMS: 45000,
     });
     await client.connect();
     console.log('MongoDB client connected');
+
     cachedClient = client;
 
-    // Set up Mongoose connection using the same client
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 2000,
       socketTimeoutMS: 45000,
     });
     console.log('Mongoose connected');

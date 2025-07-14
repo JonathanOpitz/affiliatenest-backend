@@ -21,21 +21,19 @@ console.log('Environment:', {
   BASE_URL: process.env.BASE_URL,
 });
 
-// MongoDB connection status
 let connected = false;
 
-// Initialize MongoDB connection in background
 const initDB = async () => {
   try {
     await connectDB();
     connected = true;
   } catch (error) {
     connected = false;
+    console.error('Initial MongoDB connection error:', error.message);
   }
 };
 initDB().catch(err => console.error('Initial MongoDB connection error:', err.message));
 
-// Middleware
 app.set('trust proxy', 1);
 app.use(cors({
   origin: ['http://localhost:3000', 'https://affiliatenest-dggekkgul-jonathans-projects-3fae278e.vercel.app'],
@@ -48,33 +46,29 @@ app.use(helmet({
 }));
 app.use(express.json());
 
-// Add version header
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.9');
+  res.setHeader('X-App-Version', '1.0.10');
   next();
 });
 
-// Root endpoint
 app.get('/', (req, res) => {
   console.log('Root endpoint hit');
   res.json({
     status: 'Server is running',
-    version: '1.0.9',
+    version: '1.0.10',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
 
-// Health check
 app.get('/api/health', (req, res) => {
   console.log('Health endpoint hit');
   res.json({
     status: 'API is running',
-    version: '1.0.9',
+    version: '1.0.10',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
 
-// Test endpoint
 app.get('/api/test', async (req, res) => {
   if (!connected || mongoose.connection.readyState !== 1) {
     return res.status(500).json({ error: 'Database not connected' });
@@ -94,7 +88,6 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// Widget endpoint
 app.get('/api/widget.js', async (req, res) => {
   if (!connected || mongoose.connection.readyState !== 1) {
     return res.status(500).send(`console.error("Database not connected");`);
@@ -157,11 +150,9 @@ app.get('/api/widget.js', async (req, res) => {
   }
 });
 
-// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/affiliate', require('./routes/affiliate'));
 
-// Favicon endpoint
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 module.exports = app;
