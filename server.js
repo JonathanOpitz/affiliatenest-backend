@@ -27,7 +27,7 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     try {
       await connectDB();
       console.log('MongoDB connection successful');
-      return;
+      return true;
     } catch (error) {
       console.error(`MongoDB connection attempt ${i + 1} failed:`, error.message, error.stack);
       if (i < retries - 1) {
@@ -37,7 +37,7 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     }
   }
   console.error('MongoDB connection failed after retries');
-  return false; // Don't exit, allow server to start
+  return false;
 };
 
 // Start server
@@ -49,27 +49,37 @@ const startServer = async () => {
   app.use(cors({
     origin: ['http://localhost:3000', 'https://affiliatenest-dggekkgul-jonathans-projects-3fae278e.vercel.app'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
   app.use(helmet({
-    crossOriginResourcePolicy: false
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
   }));
   app.use(express.json());
 
   // Add version header
   app.use((req, res, next) => {
-    res.setHeader('X-App-Version', '1.0.5'); // Updated version
+    res.setHeader('X-App-Version', '1.0.6');
     next();
   });
 
-  // Health check (no MongoDB dependency)
+  // Root endpoint
+  app.get('/', (req, res) => {
+    console.log('Root endpoint hit');
+    res.json({
+      status: 'Server is running',
+      version: '1.0.6',
+      mongodb: connected ? mongoose.connection.readyState : 'failed'
+    });
+  });
+
+  // Health check
   app.get('/api/health', (req, res) => {
     console.log('Health endpoint hit');
     res.json({
       status: 'API is running',
-      version: '1.0.5',
-      mongodb: connected ? mongoose.connection.readyState : 'failed',
+      version: '1.0.6',
+      mongodb: connected ? mongoose.connection.readyState : 'failed'
     });
   });
 
@@ -160,13 +170,9 @@ const startServer = async () => {
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/affiliate', require('./routes/affiliate'));
 
-  // Start server
-  const PORT = process.env.PORT || 5004;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  // Favicon endpoint to prevent 404
+  app.get('/favicon.ico', (req, res) => res.status(204).end());
 };
 
 startServer();
-
 module.exports = app;
