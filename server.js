@@ -7,7 +7,7 @@ const dotenv = require('dotenv');
 const cache = require('memory-cache');
 const AffiliateLink = require('./models/AffiliateLink');
 const AffiliateProgram = require('./models/AffiliateProgram');
-const connectDB = require('./config/db');
+const { connectDB, cachedClient } = require('./config/db');
 
 dotenv.config();
 const app = express();
@@ -21,30 +21,19 @@ console.log('Environment:', {
   BASE_URL: process.env.BASE_URL,
 });
 
-// MongoDB connection (non-blocking)
+// MongoDB connection status
 let connected = false;
-const connectWithRetry = async (retries = 3, delay = 3000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await connectDB();
-      console.log('MongoDB connection successful');
-      connected = true;
-      return true;
-    } catch (error) {
-      console.error(`MongoDB connection attempt ${i + 1} failed:`, error.message, error.stack);
-      if (i < retries - 1) {
-        console.log(`Retrying in ${delay / 1000} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  console.error('MongoDB connection failed after retries');
-  connected = false;
-  return false;
-};
 
-// Start MongoDB connection in background
-connectWithRetry().catch(err => console.error('MongoDB connection error:', err.message));
+// Initialize MongoDB connection in background
+const initDB = async () => {
+  try {
+    await connectDB();
+    connected = true;
+  } catch (error) {
+    connected = false;
+  }
+};
+initDB().catch(err => console.error('Initial MongoDB connection error:', err.message));
 
 // Middleware
 app.set('trust proxy', 1);
@@ -61,7 +50,7 @@ app.use(express.json());
 
 // Add version header
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.8');
+  res.setHeader('X-App-Version', '1.0.9');
   next();
 });
 
@@ -70,7 +59,7 @@ app.get('/', (req, res) => {
   console.log('Root endpoint hit');
   res.json({
     status: 'Server is running',
-    version: '1.0.8',
+    version: '1.0.9',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
@@ -80,7 +69,7 @@ app.get('/api/health', (req, res) => {
   console.log('Health endpoint hit');
   res.json({
     status: 'API is running',
-    version: '1.0.8',
+    version: '1.0.9',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
