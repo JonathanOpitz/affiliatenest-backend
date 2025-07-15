@@ -1,4 +1,3 @@
-// routes/auth.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -146,7 +145,7 @@ router.get('/verify/:token', async (req, res) => {
     user.verificationToken = undefined;
     await user.save();
     console.log('User verified:', { email: user.email, username: user.username });
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    res.status(200).json({ message: 'Account verified successfully' });
   } catch (error) {
     console.error('Verification error:', error.message, error.stack);
     res.status(500).json({ error: `Server error: ${error.message}` });
