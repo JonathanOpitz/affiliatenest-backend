@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const { MongoClient } = require('mongodb');
 const dns = require('dns').promises;
 
+const startTime = Date.now();
+await client.connect();
+console.log('MongoDB connection time:', (Date.now() - startTime) / 1000, 'seconds');
+
 const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
 
