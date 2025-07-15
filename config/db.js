@@ -2,10 +2,6 @@ const mongoose = require('mongoose');
 const { MongoClient } = require('mongodb');
 const dns = require('dns').promises;
 
-const startTime = Date.now();
-await client.connect();
-console.log('MongoDB connection time:', (Date.now() - startTime) / 1000, 'seconds');
-
 const MONGODB_URI = process.env.MONGODB_URI;
 let cachedClient = null;
 
@@ -39,26 +35,31 @@ const connectDB = async () => {
     }
 
     const client = new MongoClient(MONGODB_URI, {
-      serverSelectionTimeoutMS: 15000,
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 60000,
-      connectTimeoutMS: 15000,
+      connectTimeoutMS: 30000,
       retryWrites: true,
       w: 'majority',
       maxPoolSize: 10,
       minPoolSize: 2,
+      useUnifiedTopology: true,
     });
+
+    const startTime = Date.now();
     await client.connect();
+    console.log('MongoDB connection time:', (Date.now() - startTime) / 1000, 'seconds');
     console.log('MongoDB client connected:', JSON.stringify(client.options.servers));
 
     cachedClient = client;
 
     await mongoose.connect(MONGODB_URI, {
       dbName: 'affiliatenest',
-      serverSelectionTimeoutMS: 15000,
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 60000,
-      connectTimeoutMS: 15000,
+      connectTimeoutMS: 30000,
       maxPoolSize: 10,
       minPoolSize: 2,
+      useUnifiedTopology: true,
     });
     console.log('Mongoose connected to database:', mongoose.connection.db.databaseName);
     return client;
