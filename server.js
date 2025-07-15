@@ -57,7 +57,7 @@ app.use(helmet({
 app.use(express.json());
 
 app.use((req, res, next) => {
-  res.setHeader('X-App-Version', '1.0.14');
+  res.setHeader('X-App-Version', '1.0.15');
   next();
 });
 
@@ -65,7 +65,7 @@ app.get('/', (req, res) => {
   console.log('Root endpoint hit');
   res.json({
     status: 'Server is running',
-    version: '1.0.14',
+    version: '1.0.15',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });
@@ -74,7 +74,7 @@ app.get('/api/health', (req, res) => {
   console.log('Health endpoint hit');
   res.json({
     status: 'API is running',
-    version: '1.0.14',
+    version: '1.0.15',
     mongodb: connected ? mongoose.connection.readyState : 'failed'
   });
 });

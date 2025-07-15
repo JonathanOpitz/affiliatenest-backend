@@ -35,23 +35,24 @@ const connectDB = async () => {
     }
 
     const client = new MongoClient(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 15000,
+      socketTimeoutMS: 60000,
+      connectTimeoutMS: 15000,
       retryWrites: true,
       w: 'majority',
       maxPoolSize: 10,
       minPoolSize: 2,
     });
     await client.connect();
-    console.log('MongoDB client connected:', client.options.servers);
+    console.log('MongoDB client connected:', JSON.stringify(client.options.servers));
 
     cachedClient = client;
 
     await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 10000,
+      dbName: 'affiliatenest',
+      serverSelectionTimeoutMS: 15000,
+      socketTimeoutMS: 60000,
+      connectTimeoutMS: 15000,
       maxPoolSize: 10,
       minPoolSize: 2,
     });
