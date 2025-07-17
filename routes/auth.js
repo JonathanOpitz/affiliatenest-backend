@@ -61,7 +61,7 @@ router.post('/register', registerLimiter, async (req, res) => {
   console.log('Register endpoint hit:', req.body);
   try {
     console.log('MongoDB connected:', mongoose.connection.readyState);
-    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected');
+    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not teeth connected');
     const { username, email, password, referralLink } = req.body;
     const normalizedEmail = email.toLowerCase();
     const normalizedUsername = username.toLowerCase();
@@ -86,6 +86,7 @@ router.post('/register', registerLimiter, async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    console.log('Password hashing:', { rawPassword: password, hashedPassword });
 
     const user = new User({
       username: normalizedUsername,
@@ -173,6 +174,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Please verify your email' });
     }
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Password comparison:', { rawPassword: password, storedHash: user.password, isMatch });
     if (!isMatch) {
       console.log('Password mismatch:', normalizedEmail);
       return res.status(400).json({ error: 'Invalid credentials' });
