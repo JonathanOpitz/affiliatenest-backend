@@ -61,10 +61,15 @@ router.post('/register', registerLimiter, async (req, res) => {
   console.log('Register endpoint hit:', req.body);
   try {
     console.log('MongoDB connected:', mongoose.connection.readyState);
-    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not teeth connected');
+    console.log('Database:', mongoose.connection.db ? mongoose.connection.db.databaseName : 'not connected');
     const { username, email, password, referralLink } = req.body;
+    if (typeof password !== 'string' || password.length < 6) {
+      console.log('Invalid password:', { password, type: typeof password, length: password ? password.length : 'undefined' });
+      return res.status(400).json({ error: 'Password must be a string with at least 6 characters' });
+    }
     const normalizedEmail = email.toLowerCase();
     const normalizedUsername = username.toLowerCase();
+    console.log('Input validation:', { rawPassword: password, email: normalizedEmail, username: normalizedUsername });
     console.log('Environment:', {
       MONGODB_URI: process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:.*@/, ':****@') : 'undefined',
       JWT_SECRET: !!process.env.JWT_SECRET,
@@ -161,8 +166,9 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = email.toLowerCase();
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!email || !password || typeof password !== 'string') {
+      console.log('Invalid login input:', { email, password, passwordType: typeof password });
+      return res.status(400).json({ error: 'Email and password are required and must be strings' });
     }
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
