@@ -54,6 +54,20 @@ router.get('/test-db', async (req, res) => {
   }
 });
 
+router.get('/test-bcrypt', async (req, res) => {
+  try {
+    const password = 'secure123456';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const isMatch = await bcrypt.compare(password, hashedPassword);
+    console.log('Bcrypt test:', { password, hashedPassword, isMatch });
+    res.json({ password, hashedPassword, isMatch });
+  } catch (error) {
+    console.error('Bcrypt test error:', error.message, error.stack);
+    res.status(500).json({ error: `Bcrypt test error: ${error.message}` });
+  }
+});
+
 router.post('/register', registerLimiter, async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
     return res.status(500).json({ error: 'Database not connected' });
